@@ -288,7 +288,7 @@ python app.py
 
 **Adityaa SS**
 
-Machine Learning Engineer | Data-Driven Systems & Predictive Modeling
+AI/ML | Full-Stack Developer
 
 GitHub: [https://github.com/4dh11](https://github.com/4dh11)
 
