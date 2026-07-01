@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Churn — RetailIQ{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-label">XGBoost Classifier · RFM Features</div>
+  <h1 class="page-title">Customer Churn Prediction</h1>
+  <p class="page-sub">{{ total }} customers scored &nbsp;·&nbsp; Revenue at risk from high-risk segment: £{{ revenue_at_risk }}</p>
+</div>
+
+<section class="section">
+  <div class="section-label">Risk Distribution</div>
+  <div class="card-grid three">
+    <div class="stat-card danger">
+      <div class="stat-label">High Risk</div>
+      <div class="stat-value">{{ high_count }}</div>
+      <div class="stat-sub">Churn probability &gt; 70%</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Medium Risk</div>
+      <div class="stat-value">{{ medium_count }}</div>
+      <div class="stat-sub">Churn probability 40–70%</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Low Risk</div>
+      <div class="stat-value">{{ low_count }}</div>
+      <div class="stat-sub">Churn probability &lt; 40%</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Segment Analysis</div>
+  <div class="card-grid two">
+    <div class="chart-card">
+      <div class="chart-title">Customers by Segment</div>
+      <div class="chart-wrap"><canvas id="segmentChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Customers by Risk Tier</div>
+      <div class="chart-wrap"><canvas id="riskChart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Customer Risk Table</div>
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab('high', this)">High Risk</button>
+    <button class="tab" onclick="showTab('medium', this)">Medium Risk</button>
+    <button class="tab" onclick="showTab('low', this)">Low Risk</button>
+  </div>
+
+  <div id="tab-high" class="tab-content active">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Customer ID</th>
+            <th>Recency (days)</th>
+            <th>Frequency</th>
+            <th>Monetary (£)</th>
+            <th>Segment</th>
+            <th>Churn Probability</th>
+            <th>Recommended Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in high %}
+          <tr>
+            <td class="mono">{{ row.CustomerID | int }}</td>
+            <td>{{ row.Recency }}</td>
+            <td>{{ row.Frequency }}</td>
+            <td class="mono">{{ "{:,.0f}".format(row.Monetary) }}</td>
+            <td><span class="badge segment">{{ row.Segment_Label }}</span></td>
+            <td><span class="risk-bar"><span class="risk-fill danger" style="width:{{ row.Churn_Probability }}%"></span></span><span class="risk-pct">{{ row.Churn_Probability }}%</span></td>
+            <td class="action-cell">{{ row.Recommended_Action }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-medium" class="tab-content">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Customer ID</th>
+            <th>Recency (days)</th>
+            <th>Frequency</th>
+            <th>Monetary (£)</th>
+            <th>Segment</th>
+            <th>Churn Probability</th>
+            <th>Recommended Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in medium %}
+          <tr>
+            <td class="mono">{{ row.CustomerID | int }}</td>
+            <td>{{ row.Recency }}</td>
+            <td>{{ row.Frequency }}</td>
+            <td class="mono">{{ "{:,.0f}".format(row.Monetary) }}</td>
+            <td><span class="badge segment">{{ row.Segment_Label }}</span></td>
+            <td><span class="risk-bar"><span class="risk-fill warning" style="width:{{ row.Churn_Probability }}%"></span></span><span class="risk-pct">{{ row.Churn_Probability }}%</span></td>
+            <td class="action-cell">{{ row.Recommended_Action }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-low" class="tab-content">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Customer ID</th>
+            <th>Recency (days)</th>
+            <th>Frequency</th>
+            <th>Monetary (£)</th>
+            <th>Segment</th>
+            <th>Churn Probability</th>
+            <th>Recommended Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in low %}
+          <tr>
+            <td class="mono">{{ row.CustomerID | int }}</td>
+            <td>{{ row.Recency }}</td>
+            <td>{{ row.Frequency }}</td>
+            <td class="mono">{{ "{:,.0f}".format(row.Monetary) }}</td>
+            <td><span class="badge segment">{{ row.Segment_Label }}</span></td>
+            <td><span class="risk-bar"><span class="risk-fill success" style="width:{{ row.Churn_Probability }}%"></span></span><span class="risk-pct">{{ row.Churn_Probability }}%</span></td>
+            <td class="action-cell">{{ row.Recommended_Action }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+const segLabels = {{ segment_counts.keys() | list | tojson }};
+const segValues = {{ segment_counts.values() | list | tojson }};
+const riskLabels = {{ risk_counts.keys() | list | tojson }};
+const riskValues = {{ risk_counts.values() | list | tojson }};
+
+const segColors  = ["#22c55e","#6366f1","#f59e0b","#ef4444"];
+const riskColors = { "High": "#ef4444", "Medium": "#f59e0b", "Low": "#22c55e" };
+
+new Chart(document.getElementById("segmentChart"), {
+  type: "doughnut",
+  data: {
+    labels: segLabels,
+    datasets: [{ data: segValues, backgroundColor: segColors, borderWidth: 0 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: "bottom", labels: { color: "#94a3b8", font: { family: "Sora", size: 12 }, padding: 16 } } }
+  }
+});
+
+new Chart(document.getElementById("riskChart"), {
+  type: "bar",
+  data: {
+    labels: riskLabels,
+    datasets: [{
+      data: riskValues,
+      backgroundColor: riskLabels.map(l => riskColors[l] || "#6366f1"),
+      borderRadius: 6, borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: "#94a3b8", font: { family: "Sora" } }, grid: { display: false } },
+      y: { ticks: { color: "#94a3b8", font: { family: "Sora" } }, grid: { color: "#1e293b" } }
+    }
+  }
+});
+
+function showTab(name, btn) {
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  btn.classList.add("active");
+}
+{% endblock %}

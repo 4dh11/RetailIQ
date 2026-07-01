@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Overview — RetailIQ{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-label">Decision Support System</div>
+  <h1 class="page-title">Intelligent E-Commerce Analytics</h1>
+  <p class="page-sub">Online Retail Dataset &nbsp;·&nbsp; 2009 – 2011 &nbsp;·&nbsp; ~1M Transactions</p>
+</div>
+
+<section class="section">
+  <div class="section-label">Customer Health</div>
+  <div class="card-grid four">
+    <div class="stat-card">
+      <div class="stat-label">Total Customers</div>
+      <div class="stat-value">{{ total_customers }}</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">High Risk</div>
+      <div class="stat-value">{{ high_risk_count }}</div>
+      <div class="stat-sub">Churn probability &gt; 70%</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Medium Risk</div>
+      <div class="stat-value">{{ medium_risk_count }}</div>
+      <div class="stat-sub">Churn probability 40–70%</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Low Risk</div>
+      <div class="stat-value">{{ low_risk_count }}</div>
+      <div class="stat-sub">Churn probability &lt; 40%</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Revenue Intelligence</div>
+  <div class="card-grid three">
+    <div class="stat-card accent">
+      <div class="stat-label">Next Month Forecast</div>
+      <div class="stat-value mono">£{{ next_month_rev }}</div>
+      <div class="stat-sub">{{ next_month_label }} &nbsp;·&nbsp; Range £{{ next_month_lower }} – £{{ next_month_upper }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">YoY Revenue Growth</div>
+      <div class="stat-value mono">{{ yoy_growth }}%</div>
+      <div class="stat-sub">Year-over-year change</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Forecast Accuracy</div>
+      <div class="stat-value mono">{{ mape }}%</div>
+      <div class="stat-sub">MAPE — Mean Absolute % Error</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Models Deployed</div>
+  <div class="card-grid two">
+    <a href="/churn" class="model-card">
+      <div class="model-tag">XGBoost Classifier</div>
+      <div class="model-name">Churn Prediction</div>
+      <p class="model-desc">Identifies customers at risk of churning using RFM features. Outputs a churn probability and segment-based intervention recommendation for each customer.</p>
+      <div class="model-arrow">View Dashboard →</div>
+    </a>
+    <a href="/forecast" class="model-card">
+      <div class="model-tag">Facebook Prophet</div>
+      <div class="model-name">Sales Forecasting</div>
+      <p class="model-desc">Decomposes revenue into trend and seasonal components. Forecasts the next 6 months of revenue with 95% confidence intervals.</p>
+      <div class="model-arrow">View Dashboard →</div>
+    </a>
+  </div>
+</section>
+{% endblock %}
