@@ -256,30 +256,6 @@ Generates actionable recommendations based on:
 
 ---
 
-## Screenshots
-
-### Dashboard
-
-Add screenshots here after deployment.
-
-```markdown
-![Dashboard](screenshots/dashboard.png)
-```
-
-### Customer Segmentation
-
-```markdown
-![Customer Segmentation](screenshots/customer_segmentation.png)
-```
-
-### Sales Forecast
-
-```markdown
-![Sales Forecast](screenshots/sales_forecast.png)
-```
-
----
-
 ## Installation
 
 Clone the repository:
