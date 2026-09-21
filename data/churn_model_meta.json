@@ -1,0 +1,37 @@
+{
+  "trained_at": "2026-09-21T10:08:39",
+  "features": [
+    "Recency",
+    "Frequency365",
+    "Monetary365",
+    "AvgGapDays",
+    "RecencyToGap",
+    "Orders90d"
+  ],
+  "future_window_days": 135,
+  "active_only": true,
+  "active_max_recency_days": 135,
+  "n_trees": 26,
+  "train_snapshots": [
+    "2010-06-01",
+    "2010-07-01",
+    "2010-08-01",
+    "2010-09-01",
+    "2010-10-01",
+    "2010-11-01",
+    "2010-12-01",
+    "2011-01-01",
+    "2011-02-01"
+  ],
+  "test_snapshot": "2011-07-01",
+  "test_roc_auc": 0.7909,
+  "test_roc_auc_recency_baseline": 0.6486,
+  "walk_forward_mean_roc_auc": 0.7781,
+  "lookback_days": 365,
+  "risk_tiers": {
+    "high": 0.55,
+    "medium": 0.35
+  },
+  "limitations": "score is a ranking signal, not a calibrated probability; <2 years of data so seasonality is not learned",
+  "note": "Compute features with build_features() from churn_model.ipynb; predict_proba[:,1] = P(no purchase in next window)"
+}

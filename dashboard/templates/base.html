@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}RetailIQ{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-brand">Retail<span>IQ</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Overview</a>
+    <a href="/churn" class="nav-link {% if request.path == '/churn' %}active{% endif %}">Churn</a>
+    <a href="/forecast" class="nav-link {% if request.path == '/forecast' %}active{% endif %}">Forecast</a>
+  </div>
+</nav>
+
+<main class="main">
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+{% block scripts %}{% endblock %}
+</script>
+</body>
+</html>

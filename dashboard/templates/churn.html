@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Churn — RetailIQ{% endblock %}
+
+{% block content %}
+{% macro risk_table(rows, fill) %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Customer ID</th>
+        <th>Recency (days)</th>
+        <th>Frequency</th>
+        <th>Monetary (£)</th>
+        <th>Segment</th>
+        <th>Churn Score</th>
+        <th>Recommended Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="mono">{{ row.CustomerID | int }}</td>
+        <td>{{ row.Recency }}</td>
+        <td>{{ row.Frequency }}</td>
+        <td class="mono">{{ "{:,.0f}".format(row.Monetary) }}</td>
+        <td><span class="badge segment">{{ row.Segment_Label }}</span></td>
+        <td><span class="risk-bar"><span class="risk-fill {{ fill }}" style="width:{{ row.Churn_Probability }}%"></span></span><span class="risk-pct">{{ row.Churn_Probability }}%</span></td>
+        <td class="action-cell">{{ row.Recommended_Action }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+<div class="page-header">
+  <div class="page-header-label">XGBoost Classifier · Behavioural Features</div>
+  <h1 class="page-title">Customer Churn Prediction</h1>
+  <p class="page-sub">{{ "{:,}".format(total) }} customers &nbsp;·&nbsp; {{ "{:,}".format(scored) }} scored (bought in the last {{ active_days }} days) &nbsp;·&nbsp; {{ "{:,}".format(lapsed_count) }} lapsed &nbsp;·&nbsp; Lifetime spend of high-risk customers: £{{ high_risk_spend }}</p>
+</div>
+
+<section class="section">
+  <div class="section-label">Risk Distribution</div>
+  <div class="card-grid four">
+    <div class="stat-card danger">
+      <div class="stat-label">High Risk</div>
+      <div class="stat-value">{{ "{:,}".format(high_count) }}</div>
+      <div class="stat-sub">Churn score &ge; {{ high_cut }}%</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Medium Risk</div>
+      <div class="stat-value">{{ "{:,}".format(medium_count) }}</div>
+      <div class="stat-sub">Churn score {{ med_cut }}–{{ high_cut }}%</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Low Risk</div>
+      <div class="stat-value">{{ "{:,}".format(low_count) }}</div>
+      <div class="stat-sub">Churn score &lt; {{ med_cut }}%</div>
+    </div>
+    <div class="stat-card muted">
+      <div class="stat-label">Lapsed</div>
+      <div class="stat-value">{{ "{:,}".format(lapsed_count) }}</div>
+      <div class="stat-sub">No purchase in {{ active_days }}+ days · not scored</div>
+    </div>
+  </div>
+  <p class="stat-sub" style="margin-top:12px">The score ranks customers by relative risk; it is not a literal probability. It is used to order the list, not to predict exact churn rates.</p>
+</section>
+
+<section class="section">
+  <div class="section-label">Segment Analysis</div>
+  <div class="card-grid two">
+    <div class="chart-card">
+      <div class="chart-title">Customers by Segment</div>
+      <div class="chart-wrap"><canvas id="segmentChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Customers by Risk Tier</div>
+      <div class="chart-wrap"><canvas id="riskChart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Customer Risk Table</div>
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab('high', this)">High Risk</button>
+    <button class="tab" onclick="showTab('medium', this)">Medium Risk</button>
+    <button class="tab" onclick="showTab('low', this)">Low Risk</button>
+    <button class="tab" onclick="showTab('lapsed', this)">Lapsed (Win-back)</button>
+  </div>
+
+  <div id="tab-high" class="tab-content active">{{ risk_table(high, "danger") }}</div>
+  <div id="tab-medium" class="tab-content">{{ risk_table(medium, "warning") }}</div>
+  <div id="tab-low" class="tab-content">{{ risk_table(low, "success") }}</div>
+
+  <div id="tab-lapsed" class="tab-content">
+    <p class="stat-sub" style="margin-bottom:12px">Customers with no purchase in {{ active_days }}+ days, largest past spenders first. They are not scored: the model only predicts churn for customers who are still buying.</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Customer ID</th>
+            <th>Days Since Last Order</th>
+            <th>Frequency</th>
+            <th>Monetary (£)</th>
+            <th>Segment</th>
+            <th>Recommended Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in lapsed %}
+          <tr>
+            <td class="mono">{{ row.CustomerID | int }}</td>
+            <td>{{ row.Recency }}</td>
+            <td>{{ row.Frequency }}</td>
+            <td class="mono">{{ "{:,.0f}".format(row.Monetary) }}</td>
+            <td><span class="badge segment">{{ row.Segment_Label }}</span></td>
+            <td class="action-cell">{{ row.Recommended_Action }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+const segLabels = {{ segment_counts.keys() | list | tojson }};
+const segValues = {{ segment_counts.values() | list | tojson }};
+const riskLabels = {{ risk_counts.keys() | list | tojson }};
+const riskValues = {{ risk_counts.values() | list | tojson }};
+
+// Colours are tied to the label (not the position), so a segment keeps its colour whatever the order
+const segColorMap  = { "Champions": "#22c55e", "Promising": "#6366f1", "At Risk": "#f59e0b", "Lost Customers": "#ef4444" };
+const riskColors   = { "High": "#ef4444", "Medium": "#f59e0b", "Low": "#22c55e", "Lapsed": "#64748b" };
+
+new Chart(document.getElementById("segmentChart"), {
+  type: "doughnut",
+  data: {
+    labels: segLabels,
+    datasets: [{ data: segValues, backgroundColor: segLabels.map(l => segColorMap[l] || "#94a3b8"), borderWidth: 0 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: "bottom", labels: { color: "#94a3b8", font: { family: "Sora", size: 12 }, padding: 16 } } }
+  }
+});
+
+new Chart(document.getElementById("riskChart"), {
+  type: "bar",
+  data: {
+    labels: riskLabels,
+    datasets: [{
+      data: riskValues,
+      backgroundColor: riskLabels.map(l => riskColors[l] || "#6366f1"),
+      borderRadius: 6, borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: "#94a3b8", font: { family: "Sora" } }, grid: { display: false } },
+      y: { ticks: { color: "#94a3b8", font: { family: "Sora" } }, grid: { color: "#1e293b" } }
+    }
+  }
+});
+
+function showTab(name, btn) {
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  btn.classList.add("active");
+}
+{% endblock %}

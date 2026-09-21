@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Overview — RetailIQ{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-label">Decision Support System</div>
+  <h1 class="page-title">Intelligent E-Commerce Analytics</h1>
+  <p class="page-sub">Online Retail Dataset &nbsp;·&nbsp; 2009 – 2011 &nbsp;·&nbsp; ~1M Transactions</p>
+</div>
+
+<section class="section">
+  <div class="section-label">Customer Health</div>
+  <div class="card-grid five">
+    <div class="stat-card">
+      <div class="stat-label">Total Customers</div>
+      <div class="stat-value">{{ "{:,}".format(total_customers) }}</div>
+      <div class="stat-sub">{{ "{:,}".format(scored_customers) }} active &nbsp;·&nbsp; {{ "{:,}".format(lapsed_count) }} lapsed</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">High Risk</div>
+      <div class="stat-value">{{ "{:,}".format(high_risk_count) }}</div>
+      <div class="stat-sub">Churn score &ge; {{ high_cut }}%</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Medium Risk</div>
+      <div class="stat-value">{{ "{:,}".format(medium_risk_count) }}</div>
+      <div class="stat-sub">Churn score {{ med_cut }}–{{ high_cut }}%</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Low Risk</div>
+      <div class="stat-value">{{ "{:,}".format(low_risk_count) }}</div>
+      <div class="stat-sub">Churn score &lt; {{ med_cut }}%</div>
+    </div>
+    <div class="stat-card muted">
+      <div class="stat-label">Lapsed</div>
+      <div class="stat-value">{{ "{:,}".format(lapsed_count) }}</div>
+      <div class="stat-sub">No purchase in {{ active_days }}+ days &nbsp;·&nbsp; win-back list</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Revenue Intelligence</div>
+  <div class="card-grid three">
+    <div class="stat-card accent">
+      <div class="stat-label">Next Month Forecast</div>
+      <div class="stat-value mono">£{{ next_month_rev }}</div>
+      <div class="stat-sub">{{ next_month_label }} &nbsp;·&nbsp; Range £{{ next_month_lower }} – £{{ next_month_upper }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">YoY Revenue Growth</div>
+      <div class="stat-value mono">{{ yoy_growth }}%</div>
+      <div class="stat-sub">{{ yoy_label }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Forecast Error (MAPE)</div>
+      <div class="stat-value mono">{{ mape }}%</div>
+      <div class="stat-sub">Holdout test · lower is better{% if mape_baseline %} &nbsp;·&nbsp; naive baseline {{ mape_baseline }}%{% endif %}</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-label">Models Deployed</div>
+  <div class="card-grid two">
+    <a href="/churn" class="model-card">
+      <div class="model-tag">XGBoost Classifier</div>
+      <div class="model-name">Churn Prediction</div>
+      <p class="model-desc">Scores customers who are still active using recency, purchase rhythm and trailing 12-month spend. Ranks them by churn risk, flags lapsed customers for win-back, and recommends a segment-based intervention for each.</p>
+      <div class="model-arrow">View Dashboard →</div>
+    </a>
+    <a href="/forecast" class="model-card">
+      <div class="model-tag">Facebook Prophet</div>
+      <div class="model-name">Sales Forecasting</div>
+      <p class="model-desc">Decomposes revenue into trend and seasonal components. Forecasts the next 6 months of revenue with 95% intervals, benchmarked against a same-month-last-year baseline.</p>
+      <div class="model-arrow">View Dashboard →</div>
+    </a>
+  </div>
+</section>
+{% endblock %}
