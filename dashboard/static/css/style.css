@@ -128,3 +128,34 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); line
   .nav { padding: 0 1rem; }
   .card-grid.five, .card-grid.four, .card-grid.three { grid-template-columns: 1fr; }
 }
+
+/* --- Retrain job queue UI — append this block to the end of style.css --- */
+
+.retrain-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-retrain {
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-retrain:hover:not(:disabled) { opacity: 0.9; }
+.btn-retrain:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.status-idle     { background: var(--bg3); color: var(--muted); border: 1px solid var(--border2); }
+.status-queued   { background: var(--bg3); color: var(--accent2); border: 1px solid var(--border2); }
+.status-running  { background: var(--bg3); color: var(--accent);  border: 1px solid var(--border2); }
+.status-finished { background: var(--bg3); color: var(--success); border: 1px solid var(--border2); }
+.status-failed   { background: var(--bg3); color: var(--danger);  border: 1px solid var(--border2); cursor: help; }

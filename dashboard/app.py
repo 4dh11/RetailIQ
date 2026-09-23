@@ -1,8 +1,15 @@
 import json
 import os
+import time
 
 import pandas as pd
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template, request
+from redis import Redis
+from rq import Queue
+from rq.job import Job
+from rq.exceptions import NoSuchJobError
+
+from jobs import retrain_pipeline, LAST_TRAINED_PATH
 
 app = Flask(__name__)
 
@@ -10,6 +17,18 @@ BASE = os.path.join(os.path.dirname(__file__), "..", "data")
 
 TIER_ORDER = ["Low", "Medium", "High", "Lapsed"]
 SEGMENT_ORDER = ["Champions", "Promising", "At Risk", "Lost Customers"]
+
+# --- job queue setup -------------------------------------------------------
+# One Redis connection, one queue for the (slow) retraining job. Page loads
+# never touch this - they only read the CSVs that the job produces.
+redis_conn = Redis()
+retrain_queue = Queue("retrain", connection=redis_conn)
+
+# Key holding the id of the most recently enqueued retrain job, so a page
+# refresh (or a second Flask worker process) can find and poll the same job
+# instead of losing track of it.
+CURRENT_JOB_KEY = "retailiq:retrain:job_id"
+JOB_TIMEOUT_SECONDS = 20 * 60  # covers churn refit + Prophet CV with headroom
 
 
 def load(filename):
@@ -40,6 +59,16 @@ def model_settings():
 def tier_counts(churn_df):
     counts = churn_df["Risk_Tier"].value_counts()
     return {t: int(counts.get(t, 0)) for t in TIER_ORDER}
+
+
+def last_trained_display():
+    """Human-readable 'last trained' timestamp for the dashboard, or None if no run yet."""
+    try:
+        with open(LAST_TRAINED_PATH) as f:
+            ts = json.load(f)["timestamp"]
+        return time.strftime("%d %b %Y, %H:%M", time.localtime(ts))
+    except (OSError, KeyError, ValueError):
+        return None
 
 
 @app.route("/")
@@ -79,6 +108,7 @@ def index():
         yoy_label=yoy_label,
         mape=f"{m['MAPE']:.1f}",
         mape_baseline=mape_baseline,
+        last_trained=last_trained_display(),
     )
 
 
@@ -180,6 +210,55 @@ def forecast():
         cv_mape=get("CV_MAPE", "{:.1f}"),
         cv_mape_baseline=get("CV_MAPE_Baseline", "{:.1f}"),
     )
+
+
+# --- job queue endpoints ----------------------------------------------------
+
+def _active_job():
+    """The currently queued/running retrain job, if any, else None."""
+    job_id = redis_conn.get(CURRENT_JOB_KEY)
+    if not job_id:
+        return None
+    try:
+        job = Job.fetch(job_id.decode(), connection=redis_conn)
+    except NoSuchJobError:
+        return None
+    return job if job.get_status() in ("queued", "started") else job
+
+
+def _job_payload(job):
+    status = job.get_status(refresh=True)
+    state = {"started": "running"}.get(status, status)  # queued | running | finished | failed
+    payload = {"state": state, "step": job.meta.get("step"), "last_trained": last_trained_display()}
+    if state == "failed":
+        payload["error"] = (str(job.exc_info).strip().splitlines() or ["Unknown error"])[-1]
+    return payload
+
+
+@app.route("/retrain", methods=["POST"])
+def start_retrain():
+    """Enqueue the retraining job. A second click while one is already queued/running
+    just returns the existing job's status instead of starting a duplicate."""
+    existing = _active_job()
+    if existing and existing.get_status() in ("queued", "started"):
+        return jsonify(_job_payload(existing)), 200
+
+    job = retrain_queue.enqueue(retrain_pipeline, job_timeout=JOB_TIMEOUT_SECONDS)
+    redis_conn.set(CURRENT_JOB_KEY, job.id)
+    return jsonify(_job_payload(job)), 202
+
+
+@app.route("/retrain/status")
+def retrain_status():
+    """Polled by the dashboard. Reports idle when nothing has ever been queued."""
+    job_id = redis_conn.get(CURRENT_JOB_KEY)
+    if not job_id:
+        return jsonify(state="idle", step=None, last_trained=last_trained_display())
+    try:
+        job = Job.fetch(job_id.decode(), connection=redis_conn)
+    except NoSuchJobError:
+        return jsonify(state="idle", step=None, last_trained=last_trained_display())
+    return jsonify(_job_payload(job))
 
 
 if __name__ == "__main__":

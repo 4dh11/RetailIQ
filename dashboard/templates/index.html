@@ -6,6 +6,14 @@
   <div class="page-header-label">Decision Support System</div>
   <h1 class="page-title">Intelligent E-Commerce Analytics</h1>
   <p class="page-sub">Online Retail Dataset &nbsp;·&nbsp; 2009 – 2011 &nbsp;·&nbsp; ~1M Transactions</p>
+
+  <div class="retrain-box">
+    <button id="retrain-btn" class="btn-retrain">Retrain models</button>
+    <span id="retrain-status" class="badge segment status-idle">Idle</span>
+    <span id="last-trained" class="stat-sub">
+      Last trained: {{ last_trained or "never" }}
+    </span>
+  </div>
 </div>
 
 <section class="section">
@@ -77,4 +85,60 @@
     </a>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+(function () {
+  const btn = document.getElementById('retrain-btn');
+  const statusEl = document.getElementById('retrain-status');
+  const lastEl = document.getElementById('last-trained');
+  let pollTimer = null;
+
+  const LABELS = {
+    idle: 'Idle',
+    queued: 'Queued…',
+    running: 'Running…',
+    finished: 'Done',
+    failed: 'Failed',
+  };
+
+  function render(data) {
+    const label = data.state === 'running' && data.step ? data.step : (LABELS[data.state] || data.state);
+    statusEl.textContent = label;
+    statusEl.className = 'badge segment status-' + data.state;
+    btn.disabled = (data.state === 'queued' || data.state === 'running');
+    if (data.last_trained) {
+      lastEl.textContent = 'Last trained: ' + data.last_trained;
+    }
+    if (data.state === 'failed' && data.error) {
+      statusEl.title = data.error;
+    } else {
+      statusEl.removeAttribute('title');
+    }
+  }
+
+  function poll() {
+    fetch('/retrain/status')
+      .then((r) => r.json())
+      .then((data) => {
+        render(data);
+        clearTimeout(pollTimer);
+        if (data.state === 'queued' || data.state === 'running') {
+          pollTimer = setTimeout(poll, 3000);
+        }
+      });
+  }
+
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    fetch('/retrain', { method: 'POST' })
+      .then((r) => r.json())
+      .then((data) => {
+        render(data);
+        poll();
+      });
+  });
+
+  poll(); // in case a job is already queued/running from a previous page load
+})();
 {% endblock %}

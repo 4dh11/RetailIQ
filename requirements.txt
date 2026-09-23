@@ -1,0 +1,11 @@
+flask
+pandas
+numpy
+scikit-learn
+xgboost
+prophet
+redis
+rq
+jupyter
+nbconvert
+ipykernel
